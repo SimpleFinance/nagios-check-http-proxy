@@ -1,0 +1,113 @@
+#!/bin/bash
+#!/usr/bin/env bash
+
+NAME="check_http_proxy"
+VERSION="1.0"
+
+function version() {
+    echo "${NAME}: ${VERSION}"
+}
+
+function usage() {
+    cat <<EOF
+Usage: $check_http_proxy [OPTIONS] [-S] -P PROXY -H HOST [-p PORT] [-u URL]
+
+Options:
+  -H HOST            host to check
+  -p PORT            port to check [default: 80]
+  -S                 use HTTPS (changes port default to 443)
+  -u URL             url path with leading / [default: /]
+
+  -P PROXY           proxy url in hostname:port format
+
+  -n TRIES           number of times to try [default: 1]
+  -t TIMEOUT         amount of time to wait for a connection in seconds [default: 30]
+EOF
+}
+
+ssl=""
+host=""
+port=""
+proxy=""
+url="/"
+times=1
+timeout=30
+
+while getopts "hvH:p:Su:P:n:t:" opt; do
+    case $opt in
+        h)
+            usage
+            exit 0
+            ;;
+        v)
+            version
+            exit 0;
+            ;;
+        H)
+            host=$OPTARG
+            ;;
+        p)
+            port=$OPTARG
+            ;;
+        S)
+            ssl=1
+            ;;
+        u)
+            url=$OPTARG
+            ;;
+        P)
+            proxy=$OPTARG
+            ;;
+        n)
+            times=$OPTARG
+            ;;
+        t)
+            timeout=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [ -z "$host" ]; then
+    echo "Error: host is required"
+    usage
+    exit 10
+fi
+
+if [ -z "$proxy" ]; then
+    echo "Error: proxy is required"
+    usage
+    exit 11
+fi
+
+if [ -z "$ssl" ]; then
+    header="HTTP"
+    proxy_cmd="http_proxy=$proxy"
+    url_prefix="http://"
+else
+    header="HTTPS"
+    proxy_cmd="https_proxy=$proxy"
+    url_prefix="https://"
+fi
+
+if [ -z "$port" ]; then
+    url="${url_prefix}${host}${url}"
+else
+    url="${url_prefix}${host}:${port}${url}"
+fi
+
+start=$(date +'%s')
+wget -t $times --timeout $timeout -O /dev/null -o /dev/null -e $proxy_cmd $url
+status=$?
+end=$(date +'%s')
+
+if [ $status -eq 0 ] ; then
+  echo "${header} OK: $((end - start))s - ${url} "
+  exit 0
+else
+  echo "${header} CRITICAL: $((end - start))s - ${url} "
+  exit 2
+fi
