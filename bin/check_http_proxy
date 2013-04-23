@@ -63,7 +63,7 @@ while getopts "hv:Su:P:n:t:" opt; do
     esac
 done
 
-if [[ $(echo ${proxy} | grep "^[-.a-zA-Z0-9]*:\d*$") == "" ]]; then
+if [[ $(echo ${proxy} | grep "^[-.a-zA-Z0-9]*:[0-9]*$") == "" ]]; then
     echo "Error: Proxy must be present and in hostname:port format."
     usage
     exit 11
